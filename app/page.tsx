@@ -6,8 +6,10 @@ import { INITIAL_BANKROLL, BASE_BET, PRESET_BETS } from '@/utils/cards';
 import Card from '@/components/Card';
 import confetti from 'canvas-confetti';
 
-// Constants for localStorage
+// Constants
 const STORAGE_KEY = 'blackjack_state';
+const REPLENISH_AMOUNT = 1000;
+const REPLENISH_INTERVAL = 10 * 60 * 1000; // 10 minutes in milliseconds
 
 // Helper function to safely parse stored data
 const getSavedState = () => {
@@ -20,7 +22,8 @@ const getSavedState = () => {
     const parsed = JSON.parse(saved);
     return {
       bankroll: parsed.bankroll,
-      lastBet: parsed.lastBet || BASE_BET
+      lastBet: parsed.lastBet || BASE_BET,
+      lastReplenishTime: parsed.lastReplenishTime || 0
     };
   } catch (error) {
     console.error('Error loading saved state:', error);
@@ -35,6 +38,8 @@ export default function Home() {
   const [customBet, setCustomBet] = useState('');
   const [lastBet, setLastBet] = useState(BASE_BET);
   const [persistedBankroll, setPersistedBankroll] = useState(INITIAL_BANKROLL);
+  const [lastReplenishTime, setLastReplenishTime] = useState(0);
+  const [timeUntilReplenish, setTimeUntilReplenish] = useState<number | null>(null);
 
   // Load saved state on initial mount
   useEffect(() => {
@@ -42,18 +47,48 @@ export default function Home() {
     if (savedState) {
       setPersistedBankroll(savedState.bankroll);
       setLastBet(savedState.lastBet);
+      setLastReplenishTime(savedState.lastReplenishTime);
     }
   }, []);
 
   // Save state when bankroll changes
   useEffect(() => {
-    if (gameState) {
+    if (gameState || persistedBankroll !== INITIAL_BANKROLL) {
       localStorage.setItem(STORAGE_KEY, JSON.stringify({
-        bankroll: gameState.bankroll,
-        lastBet: lastBet
+        bankroll: gameState?.bankroll ?? persistedBankroll,
+        lastBet,
+        lastReplenishTime
       }));
     }
-  }, [gameState?.bankroll, lastBet]);
+  }, [gameState?.bankroll, persistedBankroll, lastBet, lastReplenishTime]);
+
+  const isGameInProgress = gameState?.gameStatus === 'playing';
+  const canPlaceBets = !gameState || gameState.gameStatus === 'betting' || gameState.gameStatus === 'gameOver';
+  const currentBankroll = gameState?.bankroll ?? persistedBankroll;
+
+  // Check and update replenishment timer
+  useEffect(() => {
+    const checkReplenishment = () => {
+      const now = Date.now();
+      const timeSinceLastReplenish = now - lastReplenishTime;
+      
+      if (currentBankroll <= 0 && timeSinceLastReplenish < REPLENISH_INTERVAL) {
+        const remaining = REPLENISH_INTERVAL - timeSinceLastReplenish;
+        setTimeUntilReplenish(Math.ceil(remaining / 1000));
+      } else if (currentBankroll <= 0) {
+        setPersistedBankroll(prev => prev + REPLENISH_AMOUNT);
+        setLastReplenishTime(now);
+        setTimeUntilReplenish(null);
+      } else {
+        setTimeUntilReplenish(null);
+      }
+    };
+
+    const timer = setInterval(checkReplenishment, 1000);
+    checkReplenishment(); // Initial check
+
+    return () => clearInterval(timer);
+  }, [lastReplenishTime, currentBankroll]);
 
   // Update cardKey when new cards are dealt or when game status changes
   useEffect(() => {
@@ -161,9 +196,12 @@ export default function Home() {
     setGameState(null);
   };
 
-  const isGameInProgress = gameState?.gameStatus === 'playing';
-  const canPlaceBets = !gameState || gameState.gameStatus === 'betting' || gameState.gameStatus === 'gameOver';
-  const currentBankroll = gameState?.bankroll ?? persistedBankroll;
+  // Format time remaining
+  const formatTimeRemaining = (seconds: number) => {
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+  };
 
   return (
     <main className="min-h-screen bg-green-800 p-4">
@@ -172,6 +210,11 @@ export default function Home() {
           <h1 className="text-3xl font-bold text-white">Blackjack</h1>
           <div className="text-right">
             <div className="text-yellow-400 font-bold">Bankroll: ${currentBankroll}</div>
+            {timeUntilReplenish !== null && (
+              <div className="text-sm text-yellow-300">
+                Next bankroll in: {formatTimeRemaining(timeUntilReplenish)}
+              </div>
+            )}
             {currentBankroll !== INITIAL_BANKROLL && (
               <button
                 onClick={handleReset}
@@ -184,7 +227,7 @@ export default function Home() {
         </div>
 
         {/* Betting UI - Always visible */}
-        <div className={`text-center space-y-4 mb-8 ${!canPlaceBets ? 'opacity-50 pointer-events-none' : ''}`}>
+        <div className={`text-center space-y-4 mb-8 ${!canPlaceBets || timeUntilReplenish !== null ? 'opacity-50 pointer-events-none' : ''}`}>
           <h2 className="text-xl text-white mb-4">Place Your Bet</h2>
           <div className="flex flex-wrap justify-center gap-2 mb-4">
             {PRESET_BETS.map(amount => (
@@ -267,23 +310,25 @@ export default function Home() {
             
             {/* Action Buttons */}
             <div className="space-y-4">
-              {/* Double Down Button - Always visible */}
-              <div className="flex justify-center">
-                <button
-                  onClick={() => handleAction('double')}
-                  disabled={!isGameInProgress || !gameState.canDouble || gameState.bankroll < gameState.currentBet * 2}
-                  className="bg-purple-500 text-white font-bold py-2 px-6 rounded-full hover:bg-purple-400 disabled:opacity-50"
-                >
-                  Double Down (${gameState.currentBet * 2})
-                </button>
-              </div>
+              {/* Double Down Button - Only visible during gameplay */}
+              {isGameInProgress && (
+                <div className="flex justify-center">
+                  <button
+                    onClick={() => handleAction('double')}
+                    disabled={!gameState.canDouble || gameState.bankroll < gameState.currentBet * 2}
+                    className="bg-purple-500 text-white font-bold py-2 px-6 rounded-full hover:bg-purple-400 disabled:opacity-50"
+                  >
+                    Double Down (${gameState.currentBet * 2})
+                  </button>
+                </div>
+              )}
 
               {/* Hit/Stand or Play Again Buttons */}
               <div className="flex justify-center gap-4">
                 {gameState.gameStatus === 'gameOver' ? (
                   <button
                     onClick={() => handleAction('deal', lastBet)}
-                    disabled={isLoading || lastBet > (gameState?.bankroll ?? persistedBankroll)}
+                    disabled={isLoading || lastBet > currentBankroll || timeUntilReplenish !== null}
                     className="bg-yellow-500 text-black font-bold py-2 px-12 rounded-full hover:bg-yellow-400 disabled:opacity-50"
                   >
                     Play Again (${lastBet})
