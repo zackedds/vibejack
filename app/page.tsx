@@ -60,7 +60,7 @@ export default function Home() {
         lastReplenishTime
       }));
     }
-  }, [gameState?.bankroll, persistedBankroll, lastBet, lastReplenishTime]);
+  }, [gameState, persistedBankroll, lastBet, lastReplenishTime]);
 
   const isGameInProgress = gameState?.gameStatus === 'playing';
   const canPlaceBets = !gameState || gameState.gameStatus === 'betting' || gameState.gameStatus === 'gameOver';
@@ -102,11 +102,11 @@ export default function Home() {
     if (gameState && gameState.currentBet && gameState.gameStatus === 'playing') {
       setLastBet(gameState.currentBet);
       // If the last bet was a custom bet, update the input field
-      if (!PRESET_BETS.includes(gameState.currentBet as any)) {
+      if (!PRESET_BETS.some(bet => bet === gameState.currentBet)) {
         setCustomBet(gameState.currentBet.toString());
       }
     }
-  }, [gameState?.currentBet, gameState?.gameStatus]);
+  }, [gameState]);
 
   // Trigger confetti effect on win
   useEffect(() => {
@@ -115,9 +115,9 @@ export default function Home() {
       const duration = 1000;
       const animationEnd = Date.now() + duration;
 
-      const randomInRange = (min: number, max: number) => {
-        return Math.random() * (max - min) + min;
-      };
+      // const randomInRange = (min: number, max: number) => {
+      //   return Math.random() * (max - min) + min;
+      // };
 
       const confettiInterval = setInterval(() => {
         const timeLeft = animationEnd - Date.now();
@@ -267,6 +267,7 @@ export default function Home() {
             {/* Dealer's Hand */}
             <div className="mb-8">
               <h2 className="text-white mb-2">
+                {/* eslint-disable-next-line react/no-unescaped-entities */}
                 Dealer's Hand {!gameState.dealerHand.hasHiddenCard && `(${gameState.dealerHand.score})`}
               </h2>
               <div className="bg-green-600 p-4 rounded-lg min-h-[160px] flex gap-2 items-center">
@@ -303,7 +304,6 @@ export default function Home() {
                 <h2 className="text-2xl font-bold text-yellow-400">
                   {gameState.outcome === 'win' && 'You Win! 🎉'}
                   {gameState.outcome === 'lose' && 'Dealer Wins 😢'}
-                  {/* eslint-disable-next-line react/no-unescaped-entities */}
                   {gameState.outcome === 'push' && "It's a Push 🤝"}
                 </h2>
               </div>
