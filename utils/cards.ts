@@ -1,6 +1,12 @@
-export type Suit = '♠' | '♣' | '♥' | '♦';
+import type { CardCode } from '@/components/Card';
+
+export type Suit = 'S' | 'C' | 'H' | 'D';
 export type Rank = 'A' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' | '10' | 'J' | 'Q' | 'K';
-export type Card = { rank: Rank; suit: Suit };
+export type Card = { 
+  code: CardCode;
+  rank: Rank;
+  suit: Suit;
+};
 
 export type Hand = {
   cards: Card[];
@@ -17,14 +23,18 @@ export type GameState = {
   canDouble: boolean;
 };
 
-const SUITS: Suit[] = ['♠', '♣', '♥', '♦'];
+const SUITS: Suit[] = ['S', 'C', 'H', 'D'];
 const RANKS: Rank[] = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
 
 export function createDeck(): Card[] {
   const deck: Card[] = [];
   for (const suit of SUITS) {
     for (const rank of RANKS) {
-      deck.push({ rank, suit });
+      deck.push({ 
+        code: `${rank}${suit}` as CardCode,
+        rank, 
+        suit 
+      });
     }
   }
   return deck;

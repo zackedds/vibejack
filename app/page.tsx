@@ -1,11 +1,20 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { GameState } from '@/utils/cards';
+import Card from '@/components/Card';
 
 export default function Home() {
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [cardKey, setCardKey] = useState(0); // For retriggering animations
+
+  // Update cardKey when new cards are dealt
+  useEffect(() => {
+    if (gameState) {
+      setCardKey(prev => prev + 1);
+    }
+  }, [gameState?.playerHand.cards.length, gameState?.dealerHand.cards.length]);
 
   async function handleAction(action: 'deal' | 'hit' | 'stand' | 'double') {
     try {
@@ -24,20 +33,6 @@ export default function Home() {
     } finally {
       setIsLoading(false);
     }
-  }
-
-  function renderHand(cards: { rank: string; suit: string; }[], hideSecond = false) {
-    return cards.map((card, index) => {
-      if (hideSecond && index === 1) return <span key="hidden" className="mx-1">🂠</span>;
-      return (
-        <span
-          key={`${card.rank}${card.suit}`}
-          className={`mx-1 ${card.suit === '♥' || card.suit === '♦' ? 'text-red-600' : 'text-black'}`}
-        >
-          {card.rank}{card.suit}
-        </span>
-      );
-    });
   }
 
   return (
@@ -59,17 +54,31 @@ export default function Home() {
           <>
             {/* Dealer's Hand */}
             <div className="mb-8">
-              <h2 className="text-white mb-2">Dealer's Hand {gameState.gameStatus === 'gameOver' && `(${gameState.dealerHand.score})`}</h2>
-              <div className="bg-green-600 p-4 rounded-lg text-2xl">
-                {renderHand(gameState.dealerHand.cards, gameState.gameStatus !== 'gameOver')}
+              <h2 className="text-white mb-2">
+                Dealer's Hand {gameState.gameStatus === 'gameOver' && `(${gameState.dealerHand.score})`}
+              </h2>
+              <div className="bg-green-600 p-4 rounded-lg min-h-[160px] flex gap-2 items-center">
+                {gameState.dealerHand.cards.map((card, index) => (
+                  <Card
+                    key={`${cardKey}-dealer-${index}`}
+                    code={card.code}
+                    faceDown={index === 1 && gameState.gameStatus !== 'gameOver'}
+                    shouldFlip={index === 1 && gameState.gameStatus === 'gameOver'}
+                  />
+                ))}
               </div>
             </div>
             
             {/* Player's Hand */}
             <div className="mb-8">
               <h2 className="text-white mb-2">Your Hand ({gameState.playerHand.score})</h2>
-              <div className="bg-green-600 p-4 rounded-lg text-2xl">
-                {renderHand(gameState.playerHand.cards)}
+              <div className="bg-green-600 p-4 rounded-lg min-h-[160px] flex gap-2 items-center">
+                {gameState.playerHand.cards.map((card, index) => (
+                  <Card
+                    key={`${cardKey}-player-${index}`}
+                    code={card.code}
+                  />
+                ))}
               </div>
             </div>
             

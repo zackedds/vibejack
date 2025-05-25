@@ -8,7 +8,8 @@ A simple Blackjack game built with Next.js 13, TypeScript, and Tailwind CSS.
 - Core Blackjack actions: Deal, Hit, Stand, Double Down
 - Responsive design for desktop and mobile
 - In-memory game state management
-- Simple text-based card representation
+- Professional card assets from png-cards CDN
+- Smooth CSS animations for dealing and card reveals
 
 ## Getting Started
 
@@ -53,6 +54,7 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to start p
 - Tailwind CSS
 - React Hooks for state management
 - Next.js API Routes for game logic
+- Card assets from png-cards CDN
 
 ## Project Structure
 
@@ -65,12 +67,28 @@ blackjack-mvp/
 │     └─ game/            # Next.js API Route folder
 │        ├─ route.ts      # API route handler
 │        └─ logic.ts      # Game logic functions
+├─ components/
+│  └─ Card.tsx           # Reusable card component with animations
 ├─ utils/
-│  └─ cards.ts            # Types and deck utilities
+│  └─ cards.ts           # Types and deck utilities
 ├─ styles/
-│  └─ globals.css         # Global styles and Tailwind imports
+│  └─ globals.css        # Global styles and Tailwind imports
 └─ README.md
 ```
+
+## Customization
+
+### Card Assets
+The game uses card images from the png-cards CDN. To use different card assets:
+1. Update the image URL in `components/Card.tsx`
+2. Ensure the new assets follow the same naming convention (e.g., "AS.png" for Ace of Spades)
+3. Update the card dimensions in the component if needed
+
+### Animations
+Card animations are defined in `tailwind.config.ts`. You can customize:
+- Deal animation: Adjust the fadeInUp keyframes and timing
+- Flip animation: Modify the flipY keyframes and timing
+- Add new animations by extending the keyframes and animation configurations
 
 ## Future Improvements
 
