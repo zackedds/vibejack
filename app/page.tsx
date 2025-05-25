@@ -4,6 +4,29 @@ import { useState, useEffect } from 'react';
 import type { GameState } from '@/utils/cards';
 import { INITIAL_BANKROLL, BASE_BET, PRESET_BETS } from '@/utils/cards';
 import Card from '@/components/Card';
+import confetti from 'canvas-confetti';
+
+// Constants for localStorage
+const STORAGE_KEY = 'blackjack_state';
+
+// Helper function to safely parse stored data
+const getSavedState = () => {
+  if (typeof window === 'undefined') return null;
+  
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (!saved) return null;
+    
+    const parsed = JSON.parse(saved);
+    return {
+      bankroll: parsed.bankroll,
+      lastBet: parsed.lastBet || BASE_BET
+    };
+  } catch (error) {
+    console.error('Error loading saved state:', error);
+    return null;
+  }
+};
 
 export default function Home() {
   const [gameState, setGameState] = useState<GameState | null>(null);
@@ -11,6 +34,26 @@ export default function Home() {
   const [cardKey, setCardKey] = useState(0);
   const [customBet, setCustomBet] = useState('');
   const [lastBet, setLastBet] = useState(BASE_BET);
+  const [persistedBankroll, setPersistedBankroll] = useState(INITIAL_BANKROLL);
+
+  // Load saved state on initial mount
+  useEffect(() => {
+    const savedState = getSavedState();
+    if (savedState) {
+      setPersistedBankroll(savedState.bankroll);
+      setLastBet(savedState.lastBet);
+    }
+  }, []);
+
+  // Save state when bankroll changes
+  useEffect(() => {
+    if (gameState) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({
+        bankroll: gameState.bankroll,
+        lastBet: lastBet
+      }));
+    }
+  }, [gameState?.bankroll, lastBet]);
 
   // Update cardKey when new cards are dealt or when game status changes
   useEffect(() => {
@@ -34,6 +77,46 @@ export default function Home() {
     }
   }, [gameState?.currentBet, gameState?.gameStatus]);
 
+  // Trigger confetti effect on win
+  useEffect(() => {
+    if (gameState?.outcome === 'win') {
+      // Fire confetti from both sides
+      const duration = 1000;
+      const animationEnd = Date.now() + duration;
+
+      const randomInRange = (min: number, max: number) => {
+        return Math.random() * (max - min) + min;
+      };
+
+      const confettiInterval = setInterval(() => {
+        const timeLeft = animationEnd - Date.now();
+
+        if (timeLeft <= 0) {
+          clearInterval(confettiInterval);
+          return;
+        }
+
+        confetti({
+          particleCount: 3,
+          angle: 60,
+          spread: 55,
+          origin: { x: 0, y: 0.7 },
+          colors: ['#FFD700', '#FFA500', '#FF4500']
+        });
+
+        confetti({
+          particleCount: 3,
+          angle: 120,
+          spread: 55,
+          origin: { x: 1, y: 0.7 },
+          colors: ['#FFD700', '#FFA500', '#FF4500']
+        });
+      }, 50);
+
+      return () => clearInterval(confettiInterval);
+    }
+  }, [gameState?.outcome]);
+
   async function handleAction(action: 'showBetting' | 'deal' | 'hit' | 'stand' | 'double', bet?: number) {
     try {
       setIsLoading(true);
@@ -43,7 +126,7 @@ export default function Home() {
         body: JSON.stringify({ 
           action,
           bet,
-          state: action === 'showBetting' ? { bankroll: gameState?.bankroll ?? INITIAL_BANKROLL } : gameState 
+          state: action === 'showBetting' ? { bankroll: gameState?.bankroll ?? persistedBankroll } : gameState 
         }),
       });
       
@@ -65,13 +148,22 @@ export default function Home() {
   const handleCustomBetSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const bet = parseInt(customBet);
-    if (bet && bet > 0 && bet <= (gameState?.bankroll ?? INITIAL_BANKROLL)) {
+    if (bet && bet > 0 && bet <= (gameState?.bankroll ?? persistedBankroll)) {
       handleAction('deal', bet);
     }
   };
 
+  // Add reset function
+  const handleReset = () => {
+    localStorage.removeItem(STORAGE_KEY);
+    setPersistedBankroll(INITIAL_BANKROLL);
+    setLastBet(BASE_BET);
+    setGameState(null);
+  };
+
   const isGameInProgress = gameState?.gameStatus === 'playing';
   const canPlaceBets = !gameState || gameState.gameStatus === 'betting' || gameState.gameStatus === 'gameOver';
+  const currentBankroll = gameState?.bankroll ?? persistedBankroll;
 
   return (
     <main className="min-h-screen bg-green-800 p-4">
@@ -79,7 +171,15 @@ export default function Home() {
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-3xl font-bold text-white">Blackjack</h1>
           <div className="text-right">
-            <div className="text-yellow-400 font-bold">Bankroll: ${gameState?.bankroll ?? INITIAL_BANKROLL}</div>
+            <div className="text-yellow-400 font-bold">Bankroll: ${currentBankroll}</div>
+            {currentBankroll !== INITIAL_BANKROLL && (
+              <button
+                onClick={handleReset}
+                className="text-xs text-yellow-300 underline hover:text-yellow-100 mt-1"
+              >
+                Reset Bankroll
+              </button>
+            )}
           </div>
         </div>
 
@@ -91,7 +191,7 @@ export default function Home() {
               <button
                 key={amount}
                 onClick={() => handleAction('deal', amount)}
-                disabled={isLoading || amount > (gameState?.bankroll ?? INITIAL_BANKROLL) || !canPlaceBets}
+                disabled={isLoading || amount > currentBankroll || !canPlaceBets}
                 className={`bg-yellow-500 text-black font-bold py-2 px-4 rounded-full hover:bg-yellow-400 disabled:opacity-50 disabled:cursor-not-allowed
                   ${amount === lastBet && canPlaceBets ? 'ring-2 ring-white' : ''}`}
               >
@@ -111,7 +211,7 @@ export default function Home() {
             />
             <button
               type="submit"
-              disabled={!customBet || parseInt(customBet) > (gameState?.bankroll ?? INITIAL_BANKROLL) || !canPlaceBets}
+              disabled={!customBet || parseInt(customBet) > currentBankroll || !canPlaceBets}
               className="bg-yellow-500 text-black font-bold py-2 px-4 rounded-full hover:bg-yellow-400 disabled:opacity-50"
             >
               Bet
@@ -167,12 +267,24 @@ export default function Home() {
             
             {/* Action Buttons */}
             <div className="space-y-4">
+              {/* Double Down Button - Always visible */}
+              <div className="flex justify-center">
+                <button
+                  onClick={() => handleAction('double')}
+                  disabled={!isGameInProgress || !gameState.canDouble || gameState.bankroll < gameState.currentBet * 2}
+                  className="bg-purple-500 text-white font-bold py-2 px-6 rounded-full hover:bg-purple-400 disabled:opacity-50"
+                >
+                  Double Down (${gameState.currentBet * 2})
+                </button>
+              </div>
+
+              {/* Hit/Stand or Play Again Buttons */}
               <div className="flex justify-center gap-4">
                 {gameState.gameStatus === 'gameOver' ? (
                   <button
                     onClick={() => handleAction('deal', lastBet)}
-                    disabled={isLoading || lastBet > (gameState?.bankroll ?? INITIAL_BANKROLL)}
-                    className="bg-yellow-500 text-black font-bold py-2 px-6 rounded-full hover:bg-yellow-400 disabled:opacity-50"
+                    disabled={isLoading || lastBet > (gameState?.bankroll ?? persistedBankroll)}
+                    className="bg-yellow-500 text-black font-bold py-2 px-12 rounded-full hover:bg-yellow-400 disabled:opacity-50"
                   >
                     Play Again (${lastBet})
                   </button>
@@ -181,33 +293,20 @@ export default function Home() {
                     <button
                       onClick={() => handleAction('hit')}
                       disabled={isLoading}
-                      className="bg-blue-500 text-white font-bold py-2 px-6 rounded-full hover:bg-blue-400 disabled:opacity-50"
+                      className="bg-blue-500 text-white font-bold py-2 px-12 rounded-full hover:bg-blue-400 disabled:opacity-50 w-32"
                     >
                       Hit
                     </button>
                     <button
                       onClick={() => handleAction('stand')}
                       disabled={isLoading}
-                      className="bg-red-500 text-white font-bold py-2 px-6 rounded-full hover:bg-red-400 disabled:opacity-50"
+                      className="bg-red-500 text-white font-bold py-2 px-12 rounded-full hover:bg-red-400 disabled:opacity-50 w-32"
                     >
                       Stand
                     </button>
                   </>
                 )}
               </div>
-              
-              {/* Double Down Button - Separate Row */}
-              {isGameInProgress && gameState.canDouble && (
-                <div className="flex justify-center">
-                  <button
-                    onClick={() => handleAction('double')}
-                    disabled={isLoading || !gameState.canDouble || gameState.bankroll < gameState.currentBet * 2}
-                    className="bg-purple-500 text-white font-bold py-2 px-6 rounded-full hover:bg-purple-400 disabled:opacity-50"
-                  >
-                    Double Down (${gameState.currentBet * 2})
-                  </button>
-                </div>
-              )}
             </div>
           </>
         )}
