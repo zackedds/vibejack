@@ -1,14 +1,16 @@
 import { NextResponse } from 'next/server';
-import { deal, hit, stand, doubleDown } from './logic';
+import { deal, hit, stand, doubleDown, showBetting } from './logic';
 import type { GameState } from '@/utils/cards';
 
 export async function POST(request: Request) {
   try {
-    const { action, state } = await request.json();
+    const { action, state, bet } = await request.json();
     
     switch (action) {
+      case 'showBetting':
+        return NextResponse.json(showBetting(state?.bankroll));
       case 'deal':
-        return NextResponse.json(deal());
+        return NextResponse.json(deal(bet, state?.bankroll));
       case 'hit':
         return NextResponse.json(hit(state as GameState));
       case 'stand':

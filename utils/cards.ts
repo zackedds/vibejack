@@ -12,6 +12,7 @@ export type Hand = {
   cards: Card[];
   score: number;
   isBusted: boolean;
+  hasHiddenCard?: boolean;
 };
 
 export type GameState = {
@@ -24,6 +25,7 @@ export type GameState = {
   bankroll: number;
   currentBet: number;
   isDoubled: boolean;
+  showBettingUI?: boolean;
 };
 
 const SUITS: Suit[] = ['S', 'C', 'H', 'D'];
@@ -31,6 +33,7 @@ const RANKS: Rank[] = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', '
 
 export const INITIAL_BANKROLL = 1000;
 export const BASE_BET = 50;
+export const PRESET_BETS = [50, 100, 200, 500] as const;
 
 export function createDeck(): Card[] {
   const deck: Card[] = [];
