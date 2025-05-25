@@ -10,6 +10,8 @@ A simple Blackjack game built with Next.js 13, TypeScript, and Tailwind CSS.
 - In-memory game state management
 - Professional card assets from png-cards CDN
 - Smooth CSS animations for dealing and card reveals
+- Basic betting system with fixed bet amounts
+- Bankroll tracking and automatic payouts
 
 ## Getting Started
 
@@ -46,6 +48,9 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to start p
 - Double Down is available on initial hand only
 - No splits or insurance available in this MVP version
 - Aces are valued as 1 or 11 automatically for optimal score
+- Each round bets $50. Doubling increases bet to $100
+- Bankroll starts at $1,000 and resets on page reload
+- Wins pay 1:1, pushes return your bet
 
 ## Tech Stack
 
@@ -90,6 +95,12 @@ Card animations are defined in `tailwind.config.ts`. You can customize:
 - Flip animation: Modify the flipY keyframes and timing
 - Add new animations by extending the keyframes and animation configurations
 
+### Betting
+To modify bet amounts or add custom betting:
+1. Update `BASE_BET` in `utils/cards.ts`
+2. Modify the game logic in `api/game/logic.ts`
+3. Update the UI in `app/page.tsx` to show new betting options
+
 ## Future Improvements
 
 - Add animations for card dealing and actions
@@ -99,3 +110,4 @@ Card animations are defined in `tailwind.config.ts`. You can customize:
 - Multiplayer support
 - Enhanced UI with card graphics
 - Unit tests and integration tests
+- Custom bet amounts and betting UI

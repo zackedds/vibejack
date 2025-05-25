@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import type { GameState } from '@/utils/cards';
+import { INITIAL_BANKROLL, BASE_BET } from '@/utils/cards';
 import Card from '@/components/Card';
 
 export default function Home() {
@@ -22,7 +23,10 @@ export default function Home() {
       const response = await fetch('/api/game', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action, state: gameState }),
+        body: JSON.stringify({ 
+          action, 
+          state: action === 'deal' ? { bankroll: gameState?.bankroll ?? INITIAL_BANKROLL } : gameState 
+        }),
       });
       
       if (!response.ok) throw new Error('Game action failed');
@@ -38,7 +42,18 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-green-800 p-4">
       <div className="max-w-lg mx-auto bg-green-700 rounded-lg shadow-xl p-6">
-        <h1 className="text-3xl font-bold text-white text-center mb-8">Blackjack</h1>
+        <div className="flex justify-between items-center mb-8">
+          <h1 className="text-3xl font-bold text-white">Blackjack</h1>
+          <div className="text-right">
+            <div className="text-yellow-400 font-bold">Bankroll: ${gameState?.bankroll ?? INITIAL_BANKROLL}</div>
+            {gameState && (
+              <div className="text-yellow-300 text-sm">
+                Current Bet: ${gameState.currentBet}
+                {gameState.isDoubled && ' (Doubled)'}
+              </div>
+            )}
+          </div>
+        </div>
         
         {!gameState ? (
           <div className="text-center">
@@ -47,7 +62,7 @@ export default function Home() {
               disabled={isLoading}
               className="bg-yellow-500 text-black font-bold py-2 px-6 rounded-full hover:bg-yellow-400 disabled:opacity-50"
             >
-              Deal Cards
+              Deal Cards (Bet ${BASE_BET})
             </button>
           </div>
         ) : (
@@ -101,7 +116,7 @@ export default function Home() {
                   disabled={isLoading}
                   className="bg-yellow-500 text-black font-bold py-2 px-6 rounded-full hover:bg-yellow-400 disabled:opacity-50"
                 >
-                  New Game
+                  New Hand (Bet ${BASE_BET})
                 </button>
               ) : (
                 <>
@@ -122,10 +137,10 @@ export default function Home() {
                   {gameState.canDouble && (
                     <button
                       onClick={() => handleAction('double')}
-                      disabled={isLoading || !gameState.canDouble}
+                      disabled={isLoading || !gameState.canDouble || gameState.bankroll < gameState.currentBet * 2}
                       className="bg-purple-500 text-white font-bold py-2 px-6 rounded-full hover:bg-purple-400 disabled:opacity-50"
                     >
-                      Double
+                      Double (${gameState.currentBet * 2})
                     </button>
                   )}
                 </>

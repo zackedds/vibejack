@@ -21,10 +21,16 @@ export type GameState = {
   gameStatus: 'betting' | 'playing' | 'dealerTurn' | 'gameOver';
   outcome?: 'win' | 'lose' | 'push';
   canDouble: boolean;
+  bankroll: number;
+  currentBet: number;
+  isDoubled: boolean;
 };
 
 const SUITS: Suit[] = ['S', 'C', 'H', 'D'];
 const RANKS: Rank[] = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
+
+export const INITIAL_BANKROLL = 1000;
+export const BASE_BET = 50;
 
 export function createDeck(): Card[] {
   const deck: Card[] = [];
