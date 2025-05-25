@@ -1,4 +1,4 @@
-import { Card, GameState, createDeck, createHand, INITIAL_BANKROLL, BASE_BET, calculateScore } from '@/utils/cards';
+import {GameState, createDeck, createHand, INITIAL_BANKROLL, BASE_BET, calculateScore } from '@/utils/cards';
 
 /**
  * Shuffles an array using the Fisher-Yates algorithm

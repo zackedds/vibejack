@@ -95,11 +95,7 @@ export default function Home() {
     if (gameState) {
       setCardKey(prev => prev + 1);
     }
-  }, [
-    gameState?.playerHand.cards.length,
-    gameState?.dealerHand.cards.length,
-    gameState?.gameStatus
-  ]);
+  }, [gameState]);
 
   // Update lastBet when a bet is placed
   useEffect(() => {
@@ -168,8 +164,12 @@ export default function Home() {
       if (!response.ok) throw new Error('Game action failed');
       const newState = await response.json();
       setGameState(newState);
-    } catch (error) {
-      console.error('Game action error:', error);
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        console.error('Game action error:', error.message);
+      } else {
+        console.error('Game action error:', error);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -303,6 +303,7 @@ export default function Home() {
                 <h2 className="text-2xl font-bold text-yellow-400">
                   {gameState.outcome === 'win' && 'You Win! 🎉'}
                   {gameState.outcome === 'lose' && 'Dealer Wins 😢'}
+                  {/* eslint-disable-next-line react/no-unescaped-entities */}
                   {gameState.outcome === 'push' && "It's a Push 🤝"}
                 </h2>
               </div>
