@@ -34,12 +34,22 @@ const getSavedState = () => {
 export default function Home() {
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [cardKey, setCardKey] = useState(0);
   const [customBet, setCustomBet] = useState('');
   const [lastBet, setLastBet] = useState(BASE_BET);
   const [persistedBankroll, setPersistedBankroll] = useState(INITIAL_BANKROLL);
   const [lastReplenishTime, setLastReplenishTime] = useState(0);
   const [timeUntilReplenish, setTimeUntilReplenish] = useState<number | null>(null);
+
+  // Generate stable keys for cards that won't change during gameplay
+  const getCardKey = (type: 'dealer' | 'player', index: number, card: { code: string }) => {
+    if (!gameState) return `${type}-${index}`;
+    // Use the game start time and card position to create a stable key
+    const baseKey = `${type}-${index}-${card.code}`;
+    if (type === 'dealer' && index === 1 && gameState.dealerHand.hasHiddenCard) {
+      return `${baseKey}-hidden`;
+    }
+    return baseKey;
+  };
 
   // Load saved state on initial mount
   useEffect(() => {
@@ -89,13 +99,6 @@ export default function Home() {
 
     return () => clearInterval(timer);
   }, [lastReplenishTime, currentBankroll]);
-
-  // Update cardKey when new cards are dealt or when game status changes
-  useEffect(() => {
-    if (gameState) {
-      setCardKey(prev => prev + 1);
-    }
-  }, [gameState]);
 
   // Update lastBet when a bet is placed
   useEffect(() => {
@@ -189,12 +192,12 @@ export default function Home() {
   };
 
   // Add reset function
-  const handleReset = () => {
-    localStorage.removeItem(STORAGE_KEY);
-    setPersistedBankroll(INITIAL_BANKROLL);
-    setLastBet(BASE_BET);
-    setGameState(null);
-  };
+  // const handleReset = () => {
+  //   localStorage.removeItem(STORAGE_KEY);
+  //   setPersistedBankroll(INITIAL_BANKROLL);
+  //   setLastBet(BASE_BET);
+  //   setGameState(null);
+  // };
 
   // Format time remaining
   const formatTimeRemaining = (seconds: number) => {
@@ -203,26 +206,37 @@ export default function Home() {
     return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
   };
 
+  // Handle bankroll reset (hidden feature)
+  const handleBankrollReset = () => {
+    setPersistedBankroll(INITIAL_BANKROLL);
+    setLastReplenishTime(0);
+    setTimeUntilReplenish(null);
+    setGameState(null);
+  };
+
   return (
     <main className="min-h-screen bg-green-800 p-4">
-      <div className="max-w-lg mx-auto bg-green-700 rounded-lg shadow-xl p-6">
+      <div className="max-w-lg mx-auto bg-green-700 rounded-lg shadow-xl p-6 relative">
+        {/* Timer Popup */}
+        {timeUntilReplenish !== null && (
+          <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-10">
+            <button
+              onClick={handleBankrollReset}
+              className="bg-black/80 p-8 rounded-xl text-center cursor-default hover:bg-black/80 active:bg-black/80"
+            >
+              <div className="text-2xl font-bold text-yellow-400 mb-2">Out of Funds</div>
+              <div className="text-xl text-white">Next bankroll in:</div>
+              <div className="text-4xl font-mono text-yellow-400 mt-2">
+                {formatTimeRemaining(timeUntilReplenish)}
+              </div>
+            </button>
+          </div>
+        )}
+
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-3xl font-bold text-white">Blackjack</h1>
           <div className="text-right">
             <div className="text-yellow-400 font-bold">Bankroll: ${currentBankroll}</div>
-            {timeUntilReplenish !== null && (
-              <div className="text-sm text-yellow-300">
-                Next bankroll in: {formatTimeRemaining(timeUntilReplenish)}
-              </div>
-            )}
-            {currentBankroll !== INITIAL_BANKROLL && (
-              <button
-                onClick={handleReset}
-                className="text-xs text-yellow-300 underline hover:text-yellow-100 mt-1"
-              >
-                Reset Bankroll
-              </button>
-            )}
           </div>
         </div>
 
@@ -273,7 +287,7 @@ export default function Home() {
               <div className="bg-green-600 p-4 rounded-lg min-h-[160px] flex gap-2 items-center">
                 {gameState.dealerHand.cards.map((card, index) => (
                   <Card
-                    key={`${cardKey}-dealer-${index}`}
+                    key={getCardKey('dealer', index, card)}
                     code={card.code}
                     faceDown={index === 1 && gameState.dealerHand.hasHiddenCard}
                   />
@@ -291,7 +305,7 @@ export default function Home() {
               <div className="bg-green-600 p-4 rounded-lg min-h-[160px] flex gap-2 items-center">
                 {gameState.playerHand.cards.map((card, index) => (
                   <Card
-                    key={`${cardKey}-player-${index}`}
+                    key={getCardKey('player', index, card)}
                     code={card.code}
                   />
                 ))}

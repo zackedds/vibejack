@@ -55,7 +55,7 @@ export default function Card({ code, faceDown = false, shouldFlip = false }: Car
       `}
     >
       <Image
-        src={`https://unpkg.com/png-cards@latest/${faceDown ? 'BACK' : code}.png`}
+        src={`/cards/${faceDown ? 'BACK' : code}.png`}
         alt={faceDown ? 'Card back' : getTextFallback(code)}
         fill
         className="object-contain"
