@@ -63,13 +63,13 @@ export function calculateScore(cards: Card[]): number {
     }
   }
 
-  // Add aces
-  for (let i = 0; i < aces; i++) {
-    if (score + 11 <= 21) {
-      score += 11;
-    } else {
-      score += 1;
-    }
+  // Add all aces as 11 initially
+  score += aces * 11;
+
+  // Demote aces from 11 to 1 as needed to avoid busting
+  while (score > 21 && aces > 0) {
+    score -= 10; // 11 -> 1 = subtract 10
+    aces--;
   }
 
   return score;
