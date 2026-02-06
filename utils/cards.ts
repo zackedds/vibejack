@@ -12,6 +12,7 @@ export type Hand = {
   cards: Card[];
   score: number;
   isBusted: boolean;
+  isBlackjack: boolean;
   hasHiddenCard?: boolean;
 };
 
@@ -20,7 +21,7 @@ export type GameState = {
   dealerHand: Hand;
   deck: Card[];
   gameStatus: 'betting' | 'playing' | 'dealerTurn' | 'gameOver';
-  outcome?: 'win' | 'lose' | 'push';
+  outcome?: 'win' | 'lose' | 'push' | 'blackjack';
   canDouble: boolean;
   bankroll: number;
   currentBet: number;
@@ -79,11 +80,19 @@ export function isBusted(score: number): boolean {
   return score > 21;
 }
 
+/**
+ * Checks if a hand is a natural blackjack (21 with exactly 2 cards)
+ */
+export function isBlackjack(cards: Card[]): boolean {
+  return cards.length === 2 && calculateScore(cards) === 21;
+}
+
 export function createHand(cards: Card[]): Hand {
   const score = calculateScore(cards);
   return {
     cards,
     score,
     isBusted: isBusted(score),
+    isBlackjack: isBlackjack(cards),
   };
 } 

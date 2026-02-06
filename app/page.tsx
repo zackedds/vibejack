@@ -111,16 +111,13 @@ export default function Home() {
     }
   }, [gameState]);
 
-  // Trigger confetti effect on win
+  // Trigger confetti effect on win or blackjack
   useEffect(() => {
-    if (gameState?.outcome === 'win') {
-      // Fire confetti from both sides
-      const duration = 1000;
+    if (gameState?.outcome === 'win' || gameState?.outcome === 'blackjack') {
+      // Fire confetti from both sides (extra for blackjack!)
+      const isBlackjack = gameState.outcome === 'blackjack';
+      const duration = isBlackjack ? 2000 : 1000;
       const animationEnd = Date.now() + duration;
-
-      // const randomInRange = (min: number, max: number) => {
-      //   return Math.random() * (max - min) + min;
-      // };
 
       const confettiInterval = setInterval(() => {
         const timeLeft = animationEnd - Date.now();
@@ -131,19 +128,19 @@ export default function Home() {
         }
 
         confetti({
-          particleCount: 3,
+          particleCount: isBlackjack ? 5 : 3,
           angle: 60,
           spread: 55,
           origin: { x: 0, y: 0.7 },
-          colors: ['#FFD700', '#FFA500', '#FF4500']
+          colors: isBlackjack ? ['#FFD700', '#FFFFFF', '#000000'] : ['#FFD700', '#FFA500', '#FF4500']
         });
 
         confetti({
-          particleCount: 3,
+          particleCount: isBlackjack ? 5 : 3,
           angle: 120,
           spread: 55,
           origin: { x: 1, y: 0.7 },
-          colors: ['#FFD700', '#FFA500', '#FF4500']
+          colors: isBlackjack ? ['#FFD700', '#FFFFFF', '#000000'] : ['#FFD700', '#FFA500', '#FF4500']
         });
       }, 50);
 
@@ -190,14 +187,6 @@ export default function Home() {
       handleAction('deal', bet);
     }
   };
-
-  // Add reset function
-  // const handleReset = () => {
-  //   localStorage.removeItem(STORAGE_KEY);
-  //   setPersistedBankroll(INITIAL_BANKROLL);
-  //   setLastBet(BASE_BET);
-  //   setGameState(null);
-  // };
 
   // Format time remaining
   const formatTimeRemaining = (seconds: number) => {
@@ -281,8 +270,7 @@ export default function Home() {
             {/* Dealer's Hand */}
             <div className="mb-8">
               <h2 className="text-white mb-2">
-                {/* eslint-disable-next-line react/no-unescaped-entities */}
-                Dealer's Hand {!gameState.dealerHand.hasHiddenCard && `(${gameState.dealerHand.score})`}
+                Dealer&apos;s Hand {!gameState.dealerHand.hasHiddenCard && `(${gameState.dealerHand.score})`}
               </h2>
               <div className="bg-green-600 p-4 rounded-lg min-h-[160px] flex gap-2 items-center">
                 {gameState.dealerHand.cards.map((card, index) => (
@@ -316,10 +304,14 @@ export default function Home() {
             {gameState.outcome && (
               <div className="text-center mb-6">
                 <h2 className="text-2xl font-bold text-yellow-400">
+                  {gameState.outcome === 'blackjack' && 'BLACKJACK! 🃏✨'}
                   {gameState.outcome === 'win' && 'You Win! 🎉'}
                   {gameState.outcome === 'lose' && 'Dealer Wins 😢'}
                   {gameState.outcome === 'push' && "It's a Push 🤝"}
                 </h2>
+                {gameState.outcome === 'blackjack' && (
+                  <p className="text-sm text-yellow-300 mt-1">Pays 3:2!</p>
+                )}
               </div>
             )}
             

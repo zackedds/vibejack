@@ -31,6 +31,7 @@ export function showBetting(bankroll = INITIAL_BANKROLL): GameState {
 
 /**
  * Deals initial cards and creates new game state
+ * Checks for natural blackjack and resolves immediately if found
  */
 export function deal(bet: number, bankroll = INITIAL_BANKROLL): GameState {
   if (bet > bankroll) {
@@ -41,10 +42,43 @@ export function deal(bet: number, bankroll = INITIAL_BANKROLL): GameState {
   const playerCards = [deck.pop()!, deck.pop()!];
   const dealerCards = [deck.pop()!, deck.pop()!];
   
+  const playerHand = createHand(playerCards);
+  const dealerHand = createHand(dealerCards);
+  
+  // Check for natural blackjack
+  if (playerHand.isBlackjack || dealerHand.isBlackjack) {
+    const outcome = determineOutcome(playerHand, dealerHand);
+    let newBankroll = bankroll;
+    
+    if (outcome === 'blackjack') {
+      // Blackjack pays 3:2
+      newBankroll += Math.floor(bet * 1.5);
+    } else if (outcome === 'lose') {
+      newBankroll -= bet;
+    }
+    // Push: no change to bankroll
+    
+    return {
+      playerHand,
+      dealerHand: {
+        ...dealerHand,
+        hasHiddenCard: false // Reveal dealer's hand
+      },
+      deck,
+      gameStatus: 'gameOver',
+      outcome,
+      canDouble: false,
+      bankroll: newBankroll,
+      currentBet: bet,
+      isDoubled: false,
+      showBettingUI: false,
+    };
+  }
+  
   return {
-    playerHand: createHand(playerCards),
+    playerHand,
     dealerHand: {
-      ...createHand(dealerCards),
+      ...dealerHand,
       score: calculateScore([dealerCards[0]]), // Only count visible card in score
       hasHiddenCard: true
     },
@@ -128,9 +162,13 @@ export function stand(state: GameState): GameState {
   let newBankroll = state.bankroll;
   if (outcome === 'win') {
     newBankroll += state.currentBet;
+  } else if (outcome === 'blackjack') {
+    // Blackjack pays 3:2 (shouldn't happen in stand, but handle it)
+    newBankroll += Math.floor(state.currentBet * 1.5);
   } else if (outcome === 'lose') {
     newBankroll -= state.currentBet;
   }
+  // Push: no change to bankroll
   
   return {
     ...state,
@@ -192,8 +230,18 @@ export function doubleDown(state: GameState): GameState {
 
 /**
  * Determines the game outcome by comparing hands
+ * Handles natural blackjack cases separately
  */
-function determineOutcome(playerHand: { score: number, isBusted: boolean }, dealerHand: { score: number, isBusted: boolean }): 'win' | 'lose' | 'push' {
+function determineOutcome(
+  playerHand: { score: number; isBusted: boolean; isBlackjack: boolean },
+  dealerHand: { score: number; isBusted: boolean; isBlackjack: boolean }
+): 'win' | 'lose' | 'push' | 'blackjack' {
+  // Handle blackjack cases
+  if (playerHand.isBlackjack && dealerHand.isBlackjack) return 'push';
+  if (playerHand.isBlackjack) return 'blackjack';
+  if (dealerHand.isBlackjack) return 'lose';
+  
+  // Standard comparison
   if (playerHand.isBusted) return 'lose';
   if (dealerHand.isBusted) return 'win';
   if (playerHand.score > dealerHand.score) return 'win';
