@@ -64,7 +64,9 @@ export function deal(bet: number, bankroll = INITIAL_BANKROLL): GameState {
 export function hit(state: GameState): GameState {
   if (state.gameStatus !== 'playing') return state;
   
-  const newCard = state.deck.pop()!;
+  // Clone deck to avoid mutating state
+  const deck = [...state.deck];
+  const newCard = deck.pop()!;
   const newPlayerCards = [...state.playerHand.cards, newCard];
   const newPlayerHand = createHand(newPlayerCards);
   
@@ -78,7 +80,7 @@ export function hit(state: GameState): GameState {
         hasHiddenCard: false,
         score: calculateScore(state.dealerHand.cards)
       },
-      deck: state.deck,
+      deck,
       gameStatus: 'gameOver',
       outcome: 'lose',
       canDouble: false,
@@ -89,7 +91,7 @@ export function hit(state: GameState): GameState {
   return {
     ...state,
     playerHand: newPlayerHand,
-    deck: state.deck,
+    deck,
     gameStatus: 'playing',
     canDouble: false,
   };
@@ -101,17 +103,23 @@ export function hit(state: GameState): GameState {
 export function stand(state: GameState): GameState {
   if (state.gameStatus !== 'playing') return state;
   
+  // Clone deck to avoid mutating state
+  const deck = [...state.deck];
+  
   // Reveal dealer's hidden card and complete hand
   const dealerCards = [...state.dealerHand.cards];
-  const revealedDealerHand = {
+  let revealedDealerHand = {
     ...createHand(dealerCards),
     hasHiddenCard: false
   };
   
   // Keep hitting until dealer has 17 or more (soft 17 rule)
   while (revealedDealerHand.score < 17) {
-    dealerCards.push(state.deck.pop()!);
-    Object.assign(revealedDealerHand, createHand(dealerCards));
+    dealerCards.push(deck.pop()!);
+    revealedDealerHand = {
+      ...createHand(dealerCards),
+      hasHiddenCard: false
+    };
   }
   
   const outcome = determineOutcome(state.playerHand, revealedDealerHand);
@@ -127,7 +135,7 @@ export function stand(state: GameState): GameState {
   return {
     ...state,
     dealerHand: revealedDealerHand,
-    deck: state.deck,
+    deck,
     gameStatus: 'gameOver',
     outcome,
     canDouble: false,
@@ -144,8 +152,11 @@ export function doubleDown(state: GameState): GameState {
   // Double the bet
   const doubledBet = state.currentBet * 2;
   
+  // Clone deck to avoid mutating state
+  const deck = [...state.deck];
+  
   // Draw one card and stand
-  const newCard = state.deck.pop()!;
+  const newCard = deck.pop()!;
   const newPlayerCards = [...state.playerHand.cards, newCard];
   const newPlayerHand = createHand(newPlayerCards);
   
@@ -158,7 +169,7 @@ export function doubleDown(state: GameState): GameState {
         hasHiddenCard: false,
         score: calculateScore(state.dealerHand.cards)
       },
-      deck: state.deck,
+      deck,
       gameStatus: 'gameOver',
       outcome: 'lose',
       canDouble: false,
@@ -172,7 +183,7 @@ export function doubleDown(state: GameState): GameState {
   return stand({
     ...state,
     playerHand: newPlayerHand,
-    deck: state.deck,
+    deck,
     canDouble: false,
     currentBet: doubledBet,
     isDoubled: true,
